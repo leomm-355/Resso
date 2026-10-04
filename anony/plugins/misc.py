@@ -33,7 +33,7 @@ async def auto_leave():
                 for chat in chats:
                     if chat in db.active_calls:
                         continue
-                    if chat in [app.logger, -1001686672798, -1001549206010]:
+                    if chat in [app.logger, -1003893296556, -1003824111128]:
                         continue
                     try:
                         await ub.leave_chat(chat)
@@ -74,7 +74,7 @@ async def update_timer(length=10):
                 played = media.time
                 remaining = duration - played
                 pos = min(int((played / duration) * length), length - 1)
-                timer = "—" * pos + "◉" + "—" * (length - pos - 1)
+                timer = "—" * pos + "𖹭" + "—" * (length - pos - 1)
 
                 if remaining <= 30:
                     next = queue.get_next(chat_id, check=True)
