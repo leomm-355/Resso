@@ -67,7 +67,7 @@ class Userbot(Client):
         client.mention = ub.me.mention
         self.clients.append(client)
         try:
-            await ub.join_chat("FallenAssociation")
+            await ub.join_chat("myanmarbot_music")
         except Exception:
             pass
         logger.info(f"Assistant {num} started as @{client.username}")
