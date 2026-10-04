@@ -2,7 +2,6 @@
 # Licensed under the MIT License.
 # This file is part of AnonXMusic
 
-
 import asyncio
 import os
 import random
@@ -28,6 +27,7 @@ class DummyLogger:
     def error(self, msg):
         pass
 
+
 class YouTube:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
@@ -44,9 +44,10 @@ class YouTube:
 
     def get_cookies(self):
         if not self.checked:
-            for file in os.listdir(self.cookie_dir):
-                if file.endswith(".txt"):
-                    self.cookies.append(f"{self.cookie_dir}/{file}")
+            if os.path.exists(self.cookie_dir):
+                for file in os.listdir(self.cookie_dir):
+                    if file.endswith(".txt"):
+                        self.cookies.append(f"{self.cookie_dir}/{file}")
             self.checked = True
         if not self.cookies:
             if not self.warned:
@@ -57,6 +58,7 @@ class YouTube:
 
     async def save_cookies(self, urls: list[str]) -> None:
         logger.info("Saving cookies from urls...")
+        os.makedirs(self.cookie_dir, exist_ok=True)
         async with aiohttp.ClientSession() as session:
             for url in urls:
                 name = url.split("/")[-1]
@@ -71,7 +73,7 @@ class YouTube:
         return bool(re.match(self.regex, url))
 
     async def search(self, query: str, m_id: int, video: bool = False, retries: int = 5) -> Track | None:
-        for attempt in range(1, retries+1):
+        for attempt in range(1, retries + 1):
             try:
                 _search = VideosSearch(query, limit=1, with_live=False)
                 results = await _search.next()
@@ -143,16 +145,19 @@ class YouTube:
             pass
         return tracks
 
-    async def download(self, video_id: str, video: bool = False) -> str | None:
+    async def download(self, video_id: str, video: bool = False, format_quality: str = "360") -> str | None:
         if cached := await cache.fetch_song(video_id):
             return cached
 
         url = self.base + video_id
-        if not video and config.API_KEY and config.API_URL:
-            if file_path := await self.fallen.download_track(video_id, url):
+        
+        # 1. Meow API (FallenApi) ကို ဦးစားပေးအသုံးပြုခြင်း
+        if getattr(config, "API_KEY", None):
+            if file_path := await self.fallen.download_track(video_id, url, video=video, format_quality=format_quality):
                 await cache.handle_dl(file_path, video_id)
                 return file_path
 
+        # 2. API အလုပ်မလုပ်ပါက yt_dlp သို့ ဆင်းရန် (Failback)
         ext = "mp4" if video else "webm"
         filename = f"downloads/{video_id}.{ext}"
 
