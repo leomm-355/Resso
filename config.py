@@ -15,7 +15,7 @@ class Config:
         self.LOGGER_ID = int(getenv("LOGGER_ID", 0))
         self.OWNER_ID = int(getenv("OWNER_ID", 0))
 
-        self.DURATION_LIMIT = int(getenv("DURATION_LIMIT", 60)) * 60
+        self.DURATION_LIMIT = int(getenv("DURATION_LIMIT", 400)) * 60
         self.QUEUE_LIMIT = int(getenv("QUEUE_LIMIT", 20))
         self.PLAYLIST_LIMIT = int(getenv("PLAYLIST_LIMIT", 20))
 
@@ -25,8 +25,9 @@ class Config:
         self.SESSION4 = getenv("SESSION4", None)
         self.SESSION5 = getenv("SESSION5", None)
 
-        self.SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/RessoUpdates")
-        self.SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/DOCTOR_CHATTING_GROUP")
+        self.SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "")
+        self.SUPPORT_CHAT = getenv("SUPPORT_CHAT", "")
+        self.OWNER_LINK = getenv("OWNER_LINK", ""
 
         self.API_KEY = getenv("API_KEY", "d25f05_Sp_QkEWGkDF5Q8SnY3WXKvUch1P3piul")
         self.API_URL = getenv("API_URL", "http://api.onegrab.fun")
@@ -42,9 +43,9 @@ class Config:
             url for url in getenv("COOKIES_URL", "").split(" ")
             if url and "batbin.me" in url
         ]
-        self.DEFAULT_THUMB = getenv("DEFAULT_THUMB", "https://te.legra.ph/file/3e40a408286d4eda24191.jpg")
-        self.PING_IMG = getenv("PING_IMG", "https://i.ibb.co/Mx4kBFQj/photo-2024-10-04-01-44-53.jpg")
-        self.START_IMG = getenv("START_IMG", "https://i.ibb.co/Mx4kBFQj/photo-2024-10-04-01-44-53.jpg")
+        self.DEFAULT_THUMB = getenv("DEFAULT_THUMB", "https://files.catbox.moe/ogtgvl.jpg")
+        self.PING_IMG = getenv("PING_IMG", "https://files.catbox.moe/al04wg.jpg")
+        self.START_IMG = getenv("START_IMG", "https://files.catbox.moe/ogtgvl.jpg")
 
     def check(self):
         missing = [
