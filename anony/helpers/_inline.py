@@ -178,7 +178,7 @@ class Inline:
                 [
                     self.ikb(
                         text="Owner",
-                        user_id=config.OWNER_ID,
+                        url=config.OWNER_LINK,
                         style=enums.ButtonStyle.DANGER,
                     )
                 ]
