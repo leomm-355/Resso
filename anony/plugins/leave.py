@@ -31,7 +31,7 @@ async def _leaveall(_, m: types.Message):
         chat = dialog.chat
         if chat.type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
             continue
-        if chat.id in [app.logger, -1001686672798, -1001549206010]:
+        if chat.id in [app.logger, -1003824111128, -1003636366544]:
             continue
         if chat.id in db.active_calls:
             continue
