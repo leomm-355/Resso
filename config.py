@@ -27,7 +27,7 @@ class Config:
 
         self.SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "")
         self.SUPPORT_CHAT = getenv("SUPPORT_CHAT", "")
-        self.OWNER_LINK = getenv("OWNER_LINK", ""
+        self.OWNER_LINK = getenv("OWNER_LINK", "")
 
         self.API_KEY = getenv("API_KEY", "d25f05_Sp_QkEWGkDF5Q8SnY3WXKvUch1P3piul")
         self.API_URL = getenv("API_URL", "http://api.onegrab.fun")
