@@ -14,7 +14,6 @@ from anony import config, logger
 
 class FallenApi:
     def __init__(self, retries: int = 3, timeout: int = 25):
-        # Meow API V2.0 ရဲ့ Primary နှင့် Failback URL များ
         self.primary_url = "https://Music.yukiapi.site".rstrip("/")
         self.fallback_url = "https://Play.yukiapi.site".rstrip("/")
         self.api_key = getattr(config, "API_KEY", "yuki_766da48bba725e5d13355c4a1285a019")
@@ -28,6 +27,10 @@ class FallenApi:
             "Accept": "application/json",
             "User-Agent": "AnonXMusic-Bot",
         }
+
+    async def get_session(self) -> None:
+        """__main__.py မှ ခေါ်ဆိုသော session initialize လုပ်ရန် method"""
+        pass
 
     async def _make_request(self, session: aiohttp.ClientSession, endpoint: str) -> str | None:
         urls = [f"{self.primary_url}{endpoint}", f"{self.fallback_url}{endpoint}"]
@@ -61,7 +64,6 @@ class FallenApi:
         return None
 
     async def download_track(self, video_id: str, url: str = None, video: bool = False, format_quality: str = "360") -> str | None:
-        """Meow API V2.0 ဖြင့် သီချင်း သို့မဟုတ် ဗီဒီယို ဒေါင်းလုပ်ဆွဲခြင်း"""
         if video:
             endpoint = f"/stream/{video_id}?format={format_quality}"
         else:
