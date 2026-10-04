@@ -1,139 +1,102 @@
+# Copyright (c) 2025 AnonymousX1025
+# Licensed under the MIT License.
+# This file is part of AnonXMusic
+
 import asyncio
 import os
-import re
 import urllib.parse
-import uuid
-from dataclasses import dataclass
 from pathlib import Path
-
 import aiohttp
 import aiofiles
-from pyrogram import errors
 
-from anony import config, logger, app
-
-
-@dataclass
-class MusicTrack:
-    cdnurl: str
-    url: str
-    id: str
-    key: str = None
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "MusicTrack":
-        return cls(
-            cdnurl=data.get("cdnurl", ""),
-            url=data.get("url", ""),
-            id=data.get("id", ""),
-            key=data.get("key"),
-        )
+from anony import config, logger
 
 
 class FallenApi:
-    def __init__(self, retries: int = 3, timeout: int = 15):
-        self.api_url = config.API_URL.rstrip("/")
-        self.api_key = config.API_KEY
+    def __init__(self, retries: int = 3, timeout: int = 25):
+        # Meow API V2.0 ရဲ့ Primary နှင့် Failback URL များ
+        self.primary_url = "https://Music.yukiapi.site".rstrip("/")
+        self.fallback_url = "https://Play.yukiapi.site".rstrip("/")
+        self.api_key = getattr(config, "API_KEY", "yuki_766da48bba725e5d13355c4a1285a019")
         self.retries = retries
         self.timeout = aiohttp.ClientTimeout(total=timeout)
-        self.session: aiohttp.ClientSession | None = None
         self.download_dir = Path("downloads")
+        self.download_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_headers(self) -> dict[str, str]:
         return {
-            "X-API-Key": self.api_key,
             "Accept": "application/json",
+            "User-Agent": "AnonXMusic-Bot",
         }
 
-    async def get_session(self) -> None:
-        if not self.session:
-            self.session = aiohttp.ClientSession(timeout=self.timeout)
+    async def _make_request(self, session: aiohttp.ClientSession, endpoint: str) -> str | None:
+        urls = [f"{self.primary_url}{endpoint}", f"{self.fallback_url}{endpoint}"]
+        
+        for base_url in urls:
+            if "?" in base_url:
+                url = f"{base_url}&key={self.api_key}"
+            else:
+                url = f"{base_url}?key={self.api_key}"
 
-    async def get_track(self, url: str) -> MusicTrack | None:
-        endpoint = f"{self.api_url}/api/track?url={urllib.parse.quote(url)}"
-
-        for attempt in range(1, self.retries + 1):
-            try:
-                async with self.session.get(endpoint, headers=self._get_headers()) as resp:
-                    data = await resp.json(content_type=None)
-
-                    if resp.status == 200 and isinstance(data, dict):
-                        return MusicTrack.from_dict(data)
-
-                    error_msg = data.get("message") if isinstance(data, dict) else None
-                    status = data.get("status", resp.status) if isinstance(data, dict) else resp.status
-                    logger.warning(f"[API ERROR] {error_msg or 'Unexpected error'} (status {status})")
-                    return None
-
-            except aiohttp.ClientError as e:
-                logger.warning(f"[NETWORK ERROR] Attempt {attempt}/{self.retries} failed: {e}")
-                break
-            except asyncio.TimeoutError:
-                logger.warning(f"[TIMEOUT] Attempt {attempt}/{self.retries} exceeded timeout.")
-                break
-            except Exception as e:
-                logger.warning(f"[UNEXPECTED ERROR] {e}")
-                break
-            await asyncio.sleep(4)
-
-        logger.warning("[FAILED] All retry attempts exhausted.")
+            for attempt in range(1, self.retries + 1):
+                try:
+                    async with session.get(url, headers=self._get_headers()) as resp:
+                        if resp.status == 200:
+                            try:
+                                data = await resp.json()
+                                if isinstance(data, dict):
+                                    return data.get("url") or data.get("cdnurl") or data.get("stream")
+                            except Exception:
+                                pass
+                            return str(resp.url)
+                        
+                        logger.warning(f"[API ERROR] {base_url} returned status {resp.status}")
+                        break
+                except asyncio.TimeoutError:
+                    logger.warning(f"[TIMEOUT] Attempt {attempt} for {base_url} timed out.")
+                except Exception as e:
+                    logger.warning(f"[NETWORK ERROR] Attempt {attempt} for {base_url} failed: {e}")
+                
+                await asyncio.sleep(2)
         return None
 
-    async def download_cdn(self, video_id: str, cdn_url: str) -> str | None:
-        for _ in range(1, self.retries + 1):
+    async def download_track(self, video_id: str, url: str = None, video: bool = False, format_quality: str = "360") -> str | None:
+        """Meow API V2.0 ဖြင့် သီချင်း သို့မဟုတ် ဗီဒီယို ဒေါင်းလုပ်ဆွဲခြင်း"""
+        if video:
+            endpoint = f"/stream/{video_id}?format={format_quality}"
+        else:
+            endpoint = f"/stream/{video_id}"
+
+        ext = "mp4" if video else "webm"
+        save_path = self.download_dir / f"{video_id}_{format_quality if video else 'audio'}.{ext}"
+
+        if save_path.exists() and save_path.stat().st_size > 0:
+            return str(save_path)
+
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            stream_url = await self._make_request(session, endpoint)
+            if not stream_url:
+                logger.warning(f"[{video_id}]: All Meow API endpoints failed to fetch stream URL.")
+                return None
+
             try:
-                async with self.session.get(cdn_url) as resp:
+                async with session.get(stream_url) as resp:
                     if resp.status != 200:
-                        logger.warning(f"Failed to download: [HTTP {resp.status}]")
+                        logger.warning(f"Failed to download stream content: [HTTP {resp.status}]")
                         return None
-
-                    cd = resp.headers.get("Content-Disposition")
-                    if cd:
-                        match = re.findall(r'filename="?([^";]+)"?', cd)
-                        filename = match[0] if match else None
-                    else:
-                        filename = None
-
-                    if not filename:
-                        filename = os.path.basename(cdn_url.split("?")[0]) or f"{uuid.uuid4().hex[:8]}.mp3"
-
-                    save_path = self.download_dir / filename
-
+                    
                     async with aiofiles.open(save_path, "wb") as f:
                         async for chunk in resp.content.iter_chunked(16 * 1024):
                             if chunk:
                                 await f.write(chunk)
-
+                                
+                    if save_path.stat().st_size == 0:
+                        save_path.unlink(missing_ok=True)
+                        return None
+                        
                     return str(save_path)
-
-            except aiohttp.ClientError:
-                pass
-            except asyncio.TimeoutError:
-                pass
             except Exception as e:
-                logger.warning(f"[{video_id}]: {e}")
-            await asyncio.sleep(4)
-
-        logger.warning(f"[{video_id}]: Download failed.")
-        return None
-
-    async def download_track(self, video_id: str, url: str) -> str | None:
-        track = await self.get_track(url)
-        if not track:
-            return None
-
-        dl_url = track.cdnurl
-        if re.match(r"https?://t\.me/([^/]+)/(\d+)", dl_url):
-            try:
-                msg = await app.get_messages(message_ids=dl_url)
-                if msg.video:
-                    return None
-                file_path = await msg.download()
-                return file_path
-            except errors.FloodWait as e:
-                logger.warning(f"[FloodWait]: {e.value}s")
-            except Exception as e:
-                logger.warning(f"[TG DOWNLOAD ERROR]: {e}")
+                logger.warning(f"[DOWNLOAD ERROR] {video_id}: {e}")
+                if save_path.exists():
+                    save_path.unlink(missing_ok=True)
                 return None
-
-        return await self.download_cdn(video_id, dl_url)
